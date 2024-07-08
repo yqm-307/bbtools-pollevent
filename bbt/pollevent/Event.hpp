@@ -17,7 +17,7 @@ public:
     ~Event();
 
     int StartListen(uint32_t timeout);
-    int CancelListen();
+    int CancelListen(bool need_close_fd = false);
     int GetSocket();
     short GetEvents();
     EventId GetEventId();

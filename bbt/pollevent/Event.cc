@@ -52,14 +52,14 @@ int Event::StartListen(uint32_t timeout)
     return 0;
 }
 
-int Event::CancelListen()
+int Event::CancelListen(bool need_close_fd)
 {
     int         err;
 
     err = event_del(m_raw_event);
     evutil_socket_t socket = GetSocket();
 
-    if (socket >= 0)
+    if (need_close_fd && socket >= 0)
         ::close(socket);
 
     if (err != 0) {
