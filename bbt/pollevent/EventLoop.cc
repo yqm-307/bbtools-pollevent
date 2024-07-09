@@ -11,8 +11,9 @@ EventLoop::EventLoop(EventBase* base, bool need_auto_free_base):
 }
 
 
-EventLoop::EventLoop()
-    :m_ev_base(new EventBase)
+EventLoop::EventLoop():
+    m_ev_base(new EventBase),
+    m_auto_free_base(true)
 {
 }
 
