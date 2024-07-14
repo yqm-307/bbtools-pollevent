@@ -1,6 +1,7 @@
 #include <atomic>
 #include <bbt/base/assert/Assert.hpp>
 #include <bbt/pollevent/Event.hpp>
+#include <bbt/base/clock/Clock.hpp>
 
 namespace bbt::pollevent
 {
@@ -30,18 +31,20 @@ Event::~Event()
     m_raw_event = nullptr;
 }
 
-int Event::StartListen(uint32_t timeout)
+int Event::StartListen(uint64_t timeout)
 {
     timeval     tm;
     timeval*    tmptr = nullptr;
     int         err;
-    m_timeout = timeout;
+    m_timeout = bbt::clock::gettime() + timeout;
 
-    if (m_timeout > 0) {
+    if (timeout > 0) {
         evutil_timerclear(&tm);
         tm.tv_sec  = timeout / 1000;
         tm.tv_usec = (timeout % 1000) * 1000;
         tmptr = &tm;
+    } else {
+        tmptr = NULL;
     }
 
     err = event_add(m_raw_event, tmptr);
@@ -89,5 +92,11 @@ EventId Event::GenerateId()
     static std::atomic_uint64_t _id{0};
     return (++_id);
 }
+
+int64_t Event::GetTimeoutMs()
+{
+    return m_timeout;
+}
+
 
 } // namespace bbt::pollevent
