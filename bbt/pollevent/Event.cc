@@ -1,4 +1,5 @@
 #include <atomic>
+#include <event2/event_struct.h>
 #include <bbt/base/assert/Assert.hpp>
 #include <bbt/pollevent/Event.hpp>
 #include <bbt/base/clock/Clock.hpp>
@@ -35,8 +36,11 @@ int Event::StartListen(uint64_t timeout)
 {
     timeval     tm;
     timeval*    tmptr = nullptr;
+    timespec    ts;
     int         err;
-    m_timeout = bbt::clock::gettime() + timeout;
+
+    clock_gettime(CLOCK_MONOTONIC, &ts);    
+    m_timeout = ts.tv_sec * 1000 + ts.tv_nsec / 1000 / 1000 + timeout;
 
     if (timeout > 0) {
         evutil_timerclear(&tm);
@@ -95,7 +99,9 @@ EventId Event::GenerateId()
 
 int64_t Event::GetTimeoutMs()
 {
-    return m_timeout;
+    auto sec = m_raw_event->ev_timeout.tv_sec;
+    auto usec = m_raw_event->ev_timeout.tv_usec;
+    return (sec * 1000 + usec / 1000);
 }
 
 

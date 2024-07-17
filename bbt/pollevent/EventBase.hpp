@@ -10,9 +10,9 @@ public:
     EventBase();
     ~EventBase();
 
-    int GetEventNum();
-    event_base* GetRawBase();
-
+    int                     GetEventNum();
+    event_base*             GetRawBase();
+    int                     GetTimeOfDayCache(struct timeval* tv);
 private:
     event_base* m_ev_base{nullptr};
 };

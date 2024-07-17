@@ -25,5 +25,10 @@ event_base* EventBase::GetRawBase()
     return m_ev_base;
 }
 
+int EventBase::GetTimeOfDayCache(struct timeval* tv)
+{
+    return event_base_gettimeofday_cached(m_ev_base, tv);
+}
+
 
 } // namespace bbt:pollevent

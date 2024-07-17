@@ -44,7 +44,7 @@ BOOST_AUTO_TEST_CASE(t_timer_interval)
     std::map<EventId, uint64_t> timeout_map;
 
 
-    for (int i = 0; i < 1000; ++i) {
+    for (int i = 0; i < 100000; ++i) {
         
         auto event = loop->CreateEvent(0, EventOpt::TIMEOUT,
         [&timeout_map](auto event, auto){

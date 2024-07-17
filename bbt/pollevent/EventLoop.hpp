@@ -19,6 +19,9 @@ public:
 
     std::shared_ptr<Event>  CreateEvent(evutil_socket_t fd, short events, const OnEventCallback& onevent_cb);
     EventBase*              GetEventBase() { return m_ev_base; }
+    int64_t                 GetEvMonotonic();
+    int                     GetTimeOfDayCached(struct timeval *tv);
+    int                     GetTime();
 private:
     EventBase*              m_ev_base{nullptr};
     bool                    m_auto_free_base{false};

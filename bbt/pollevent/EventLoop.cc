@@ -29,10 +29,7 @@ int EventLoop::StartLoop(int opt)
 {
     int err = event_base_loop(m_ev_base->GetRawBase(), opt);
 
-    if (err != 0)
-        return -1;
-
-    return 0;
+    return err;
 }
 
 int EventLoop::BreakLoop()
@@ -55,5 +52,32 @@ int EventLoop::GetEventNum()
 {
     return m_ev_base->GetEventNum();
 }
+
+int64_t EventLoop::GetEvMonotonic()
+{
+    timeval tv;
+    int64_t timenow_ms = 0;
+
+    event_gettime_monotonic(m_ev_base->GetRawBase(), &tv);
+    timenow_ms += tv.tv_sec * 1000;
+    timenow_ms += (tv.tv_usec / 1000);
+    return timenow_ms;
+}
+
+int EventLoop::GetTimeOfDayCached(struct timeval *tv)
+{
+    return m_ev_base->GetTimeOfDayCache(tv);
+}
+
+int EventLoop::GetTime()
+{
+    timeval tv;
+    int ret = GetTimeOfDayCached(&tv);
+    if (ret != 0)
+        return ret;
+
+    return (tv.tv_sec * 1000 + tv.tv_usec / 1000);
+}
+
 
 } // namespace bbt::pollevent
