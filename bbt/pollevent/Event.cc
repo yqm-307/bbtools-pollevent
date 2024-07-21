@@ -1,5 +1,6 @@
 #include <atomic>
 #include <event2/event_struct.h>
+#include <event2/event-internal.h>
 #include <bbt/base/assert/Assert.hpp>
 #include <bbt/pollevent/Event.hpp>
 #include <bbt/base/clock/Clock.hpp>
@@ -15,9 +16,11 @@ void COnEventWapper(evutil_socket_t fd, short events, void* arg)
 }
 
 Event::Event(EventBase* base, evutil_socket_t fd, short listen_events, const OnEventCallback& onevent_cb)
-    :m_id(GenerateId())
+    :m_id(GenerateId()),
+    m_mono_timer(evutil_monotonic_timer_new())
 {
     Assert(base != nullptr);
+    Assert(m_mono_timer != nullptr);
     m_c_func_wapper_param.m_cpp_handler = onevent_cb;
     m_raw_event = event_new(base->GetRawBase(), fd, listen_events, COnEventWapper, this);
     Assert(m_raw_event != nullptr);
@@ -32,38 +35,52 @@ Event::~Event()
     m_raw_event = nullptr;
 }
 
+int Event::_TryGetEventCacheMonoTime(const event_base* base, timeval* val) const
+{
+    if (base->tv_cache.tv_sec) {
+        *val = base->tv_cache;
+        return 0;
+    }
+
+    return evutil_gettime_monotonic(m_mono_timer, val);
+}
+
+
 int Event::StartListen(uint64_t timeout)
 {
     timeval     tm;
     timeval*    tmptr = nullptr;
     timespec    ts;
     int         err;
-    int         cache_time;
-    int         system_time;
+    int64_t     cache_time;
+    int64_t     system_time;
 
     auto base = event_get_base(m_raw_event);
     if (base == nullptr)
         return -1;
 
+    event_base_update_cache_time(base);
+
     evutil_timerclear(&tm);
-    err = event_base_gettimeofday_cached(base, &tm);    
+    err = _TryGetEventCacheMonoTime(base, &tm);
     if (err != 0)
         return -1;
 
-    cache_time = tm.tv_sec * 1000 + tm.tv_usec / 1000;
+    cache_time = tm.tv_sec * 1000 + tm.tv_usec / 1000 + (tm.tv_usec % 1000 == 0 ? 0 : 1);
 
     evutil_timerclear(&tm);
+    
     err = gettimeofday(&tm, NULL);
     if (err != 0)
         return -1;
 
-    system_time = tm.tv_sec * 1000 + tm.tv_usec / 1000;
+    system_time = tm.tv_sec * 1000 + tm.tv_usec / 1000 + (tm.tv_usec % 1000 == 0 ? 0 : 1);
     int diff = system_time - cache_time;
     Assert(diff >= 0);
 
     if (timeout > 0) {
         timeout += diff;
-        m_timeout = system_time + timeout;
+        m_timeout = cache_time + timeout;
         evutil_timerclear(&tm);
         tm.tv_sec  = timeout / 1000;
         tm.tv_usec = (timeout % 1000) * 1000;
@@ -97,12 +114,12 @@ int Event::CancelListen(bool need_close_fd)
     return 0;
 }
 
-int Event::GetSocket()
+int Event::GetSocket() const
 {
     return event_get_fd(m_raw_event);
 }
 
-short Event::GetEvents()
+short Event::GetEvents() const
 {
     return event_get_events(m_raw_event);
 }
@@ -118,11 +135,9 @@ EventId Event::GenerateId()
     return (++_id);
 }
 
-int64_t Event::GetTimeoutMs()
+int64_t Event::GetTimeoutMs() const
 {
-    auto sec = m_raw_event->ev_timeout.tv_sec;
-    auto usec = m_raw_event->ev_timeout.tv_usec;
-    return (sec * 1000 + usec / 1000);
+    return m_timeout;
 }
 
 

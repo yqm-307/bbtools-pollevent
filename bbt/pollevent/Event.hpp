@@ -18,17 +18,19 @@ public:
 
     int                         StartListen(uint64_t timeout);
     int                         CancelListen(bool need_close_fd = false);
-    int                         GetSocket();
-    short                       GetEvents();
+    int                         GetSocket() const;
+    short                       GetEvents() const;
     EventId                     GetEventId();
     /* 获取超时时间戳，否则返回-1 */
-    int64_t                     GetTimeoutMs();
+    int64_t                     GetTimeoutMs() const;
 
 private:
     EventId                     GenerateId();
+    int                         _TryGetEventCacheMonoTime(const event_base* base, timeval* val) const;
 private:
     EventId                     m_id{0};
     event*                      m_raw_event;
+    evutil_monotonic_timer*     m_mono_timer{nullptr};
     COnEventWapperParam         m_c_func_wapper_param;
     int64_t                     m_timeout{-1};
 };

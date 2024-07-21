@@ -53,7 +53,7 @@ int EventLoop::GetEventNum()
     return m_ev_base->GetEventNum();
 }
 
-int64_t EventLoop::GetEvMonotonic()
+int64_t EventLoop::GetEvMonotonic() const
 {
     timeval tv;
     int64_t timenow_ms = 0;
@@ -64,12 +64,12 @@ int64_t EventLoop::GetEvMonotonic()
     return timenow_ms;
 }
 
-int EventLoop::GetTimeOfDayCached(struct timeval *tv)
+int EventLoop::GetTimeOfDayCached(struct timeval *tv) const
 {
     return m_ev_base->GetTimeOfDayCache(tv);
 }
 
-int EventLoop::GetTime()
+int64_t EventLoop::GetTime() const
 {
     timeval tv;
     int ret = GetTimeOfDayCached(&tv);
