@@ -38,11 +38,32 @@ int Event::StartListen(uint64_t timeout)
     timeval*    tmptr = nullptr;
     timespec    ts;
     int         err;
+    int         cache_time;
+    int         system_time;
 
-    clock_gettime(CLOCK_MONOTONIC, &ts);    
-    m_timeout = ts.tv_sec * 1000 + ts.tv_nsec / 1000 / 1000 + timeout;
+    auto base = event_get_base(m_raw_event);
+    if (base == nullptr)
+        return -1;
+
+    evutil_timerclear(&tm);
+    err = event_base_gettimeofday_cached(base, &tm);    
+    if (err != 0)
+        return -1;
+
+    cache_time = tm.tv_sec * 1000 + tm.tv_usec / 1000;
+
+    evutil_timerclear(&tm);
+    err = gettimeofday(&tm, NULL);
+    if (err != 0)
+        return -1;
+
+    system_time = tm.tv_sec * 1000 + tm.tv_usec / 1000;
+    int diff = system_time - cache_time;
+    Assert(diff >= 0);
 
     if (timeout > 0) {
+        timeout += diff;
+        m_timeout = system_time + timeout;
         evutil_timerclear(&tm);
         tm.tv_sec  = timeout / 1000;
         tm.tv_usec = (timeout % 1000) * 1000;
