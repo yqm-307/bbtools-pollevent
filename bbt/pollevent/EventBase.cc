@@ -10,9 +10,20 @@ EventBase::EventBase()
     Assert(m_ev_base != nullptr);
 }
 
+EventBase::EventBase(int32_t flag)
+{
+    m_ev_config = event_config_new();
+    Assert(m_ev_config != nullptr);
+    Assert(event_config_set_flag(m_ev_config, flag) == 0);
+    m_ev_base = event_base_new_with_config(m_ev_config);
+    Assert(m_ev_base != nullptr);
+}
+
 EventBase::~EventBase()
 {
     event_base_free(m_ev_base);
+    if (m_ev_config != nullptr)
+        event_config_free(m_ev_config);
 }
 
 int EventBase::GetEventNum()

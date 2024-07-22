@@ -1,6 +1,5 @@
 #include <atomic>
 #include <event2/event_struct.h>
-#include <event2/event-internal.h>
 #include <bbt/base/assert/Assert.hpp>
 #include <bbt/pollevent/Event.hpp>
 #include <bbt/base/clock/Clock.hpp>
@@ -17,10 +16,12 @@ void COnEventWapper(evutil_socket_t fd, short events, void* arg)
 
 Event::Event(EventBase* base, evutil_socket_t fd, short listen_events, const OnEventCallback& onevent_cb)
     :m_id(GenerateId()),
+    m_ref_base(base),
     m_mono_timer(evutil_monotonic_timer_new())
 {
     Assert(base != nullptr);
     Assert(m_mono_timer != nullptr);
+    Assert(base != nullptr);
     m_c_func_wapper_param.m_cpp_handler = onevent_cb;
     m_raw_event = event_new(base->GetRawBase(), fd, listen_events, COnEventWapper, this);
     Assert(m_raw_event != nullptr);
@@ -35,56 +36,18 @@ Event::~Event()
     m_raw_event = nullptr;
 }
 
-int Event::_TryGetEventCacheMonoTime(const event_base* base, timeval* val) const
-{
-    if (base->tv_cache.tv_sec) {
-        *val = base->tv_cache;
-        return 0;
-    }
-
-    return evutil_gettime_monotonic(m_mono_timer, val);
-}
-
-
 int Event::StartListen(uint64_t timeout)
 {
-    timeval     tm;
+    timeval     tv;
     timeval*    tmptr = nullptr;
-    timespec    ts;
     int         err;
-    int64_t     cache_time;
-    int64_t     system_time;
-
-    auto base = event_get_base(m_raw_event);
-    if (base == nullptr)
-        return -1;
-
-    event_base_update_cache_time(base);
-
-    evutil_timerclear(&tm);
-    err = _TryGetEventCacheMonoTime(base, &tm);
-    if (err != 0)
-        return -1;
-
-    cache_time = tm.tv_sec * 1000 + tm.tv_usec / 1000 + (tm.tv_usec % 1000 == 0 ? 0 : 1);
-
-    evutil_timerclear(&tm);
-    
-    err = gettimeofday(&tm, NULL);
-    if (err != 0)
-        return -1;
-
-    system_time = tm.tv_sec * 1000 + tm.tv_usec / 1000 + (tm.tv_usec % 1000 == 0 ? 0 : 1);
-    int diff = system_time - cache_time;
-    Assert(diff >= 0);
 
     if (timeout > 0) {
-        timeout += diff;
-        m_timeout = cache_time + timeout;
-        evutil_timerclear(&tm);
-        tm.tv_sec  = timeout / 1000;
-        tm.tv_usec = (timeout % 1000) * 1000;
-        tmptr = &tm;
+        m_timeout = bbt::clock::nowAfter(bbt::clock::milliseconds(timeout + 1)).time_since_epoch().count();
+        evutil_timerclear(&tv);
+        tv.tv_sec  = timeout / 1000;
+        tv.tv_usec = (timeout % 1000) * 1000 + 1;
+        tmptr = &tv;
     } else {
         tmptr = NULL;
     }

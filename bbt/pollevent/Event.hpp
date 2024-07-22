@@ -26,9 +26,9 @@ public:
 
 private:
     EventId                     GenerateId();
-    int                         _TryGetEventCacheMonoTime(const event_base* base, timeval* val) const;
 private:
     EventId                     m_id{0};
+    EventBase*                  m_ref_base{nullptr};
     event*                      m_raw_event;
     evutil_monotonic_timer*     m_mono_timer{nullptr};
     COnEventWapperParam         m_c_func_wapper_param;
