@@ -34,6 +34,9 @@ Event::~Event()
     event_free(m_raw_event);
 
     m_raw_event = nullptr;
+
+    evutil_monotonic_timer_free(m_mono_timer);
+    m_mono_timer = nullptr;
 }
 
 int Event::StartListen(uint64_t timeout)
